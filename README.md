@@ -6,8 +6,7 @@
 - Matrices and vectors are column major.
 
 ### Instalation:
-Add mgm.h to your source directory.
-Add the following line to the file you want to use MGM in.
+Add mgm.h to your source directory and add the following line to the file you want to use MGM in.
 ```sh
  #include "mgm.h"
 ```
