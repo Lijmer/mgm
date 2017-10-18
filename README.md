@@ -20,7 +20,7 @@ Done :)
 - Fully C compatible
 - Single header file
 - Compiles fast
-- Compiling as C++ addes operator overloading and function overloading
+- Compiling as C++ adds operator overloading and function overloading
 - No templates and no complex macros
 
 ### TODO:
