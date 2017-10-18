@@ -5,7 +5,7 @@
 - You can define MGM_Z_ZERO_TO_ONE to make projection matrices use a Z from 0 to 1, instead of the default -1 to 1.
 - Matrices and vectors are column major.
 
-### Instalation:
+### Installation:
 Add mgm.h to your source directory and add the following line to the file you want to use MGM in.
 ```sh
  #include "mgm.h"
