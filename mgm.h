@@ -41,7 +41,7 @@
 
 //There are still some features lacking, since I add features as I need them.
 
-//You can define WIS_Z_ZERO_TO_ONE to make projection matrices use a Z from 0 to
+//You can define MGM_Z_ZERO_TO_ONE to make projection matrices use a Z from 0 to
 // 1, instead of the default -1 to 1.
 
 #ifndef INCLUDED_MGM_H
@@ -49,19 +49,27 @@
 
 #include <math.h>
 
-#pragma warning(push)
-#pragma warning(disable : 4201)
-#pragma warning(disable : 4204)
+#if defined(_MSVC)
+#  pragma warning(push)
+#  pragma warning(disable : 4201)
+#  pragma warning(disable : 4204)
+#  define MGM_INLINE static __forceinline
+#elif defined(__clang__)
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wmissing-braces"
+#  pragma clang diagnostic ignored "-Wunused-function"
+#  define MGM_INLINE static __attribute__((always_inline))
+#else
+#  define MGM_INLINE static inline
+#endif
 
 #ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
+#  define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
 #ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
+#  define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
-
-#define MGM_INLINE static __forceinline
 
 #define MGM_SHUF2(x, y) (((x) & 0x1) | (((y) & 0x1) << 1))
 #define MGM_SHUF3(x, y, z) (((x) & 0x3)       |                                \
@@ -743,20 +751,18 @@ MGM_INLINE float4 mul(float4x4 m, float4 v) { return mulf4x4_f4(m, v); }
 MGM_INLINE float2x2 mulf2x2(float2x2 a, float2x2 b)
 {
 	return makef2x2_f2(
-		addf2(addf2(mulf2s(a.col[0], b.v[0][0]), mulf2s(a.col[1], b.v[0][1])),
-					addf2(mulf2s(a.col[2], b.v[0][2]), mulf2s(a.col[3], b.v[0][3]))),
-		addf2(addf2(mulf2s(a.col[0], b.v[1][0]), mulf2s(a.col[1], b.v[1][1])),
-					addf2(mulf2s(a.col[2], b.v[1][2]), mulf2s(a.col[3], b.v[1][3]))));
+		addf2(mulf2s(a.col[0], b.v[0][0]), mulf2s(a.col[1], b.v[0][1])),
+		addf2(mulf2s(a.col[0], b.v[1][0]), mulf2s(a.col[1], b.v[1][1])));
 }
 MGM_INLINE float3x3 mulf3x3(float3x3 a, float3x3 b)
 {
 	return makef3x3_f3(
 		addf3(addf3(mulf3s(a.col[0], b.v[0][0]), mulf3s(a.col[1], b.v[0][1])),
-					addf3(mulf3s(a.col[2], b.v[0][2]), mulf3s(a.col[3], b.v[0][3]))),
+					mulf3s(a.col[2], b.v[0][2])),
 		addf3(addf3(mulf3s(a.col[0], b.v[1][0]), mulf3s(a.col[1], b.v[1][1])),
-					addf3(mulf3s(a.col[2], b.v[1][2]), mulf3s(a.col[3], b.v[1][3]))),
+					mulf3s(a.col[2], b.v[1][2])),
 		addf3(addf3(mulf3s(a.col[0], b.v[2][0]), mulf3s(a.col[1], b.v[2][1])),
-					addf3(mulf3s(a.col[2], b.v[2][2]), mulf3s(a.col[3], b.v[2][3]))));
+					mulf3s(a.col[2], b.v[2][2])));
 }
 MGM_INLINE float4x4 mulf4x4(float4x4 a, float4x4 b)
 {
@@ -801,8 +807,8 @@ MGM_INLINE float4x4 mul(float4x4 a, float4x4 b) { return mulf4x4(a, b); }
 ////////////////////////////////////////////////////////////////////////////////
 //Projection matrix
 ////////////////////////////////////////////////////////////////////////////////
-MGM_INLINE float4x4 orthoLHf4x4() { /* TODO */};
-MGM_INLINE float4x4 orthoRHf4x4() { /* TODO */};
+MGM_INLINE float4x4 orthoLHf4x4() { /* TODO */ return makef4x4_identity(); };
+MGM_INLINE float4x4 orthoRHf4x4() { /* TODO */ return makef4x4_identity(); };
 MGM_INLINE float4x4 perspectiveRHf4x4(
 	float fov,
 	float aspect,
@@ -810,7 +816,7 @@ MGM_INLINE float4x4 perspectiveRHf4x4(
 	float zfar)
 {
 	float a = tanf(fov / 2.0f);
-#ifdef WIS_Z_ZERO_TO_ONE
+#ifdef MGM_Z_ZERO_TO_ONE
 	return makef4x4_f4(
 		makef4(1.0f / (aspect * a), 0.0f, 0.0f, 0.0f),
 		makef4(0.0f, 1.0f / a, 0.0f, 0.0f),
@@ -831,7 +837,7 @@ MGM_INLINE float4x4 perspectiveLHf4x4(
 	float zfar)
 {
 	float a = tanf(fov / 2.0f);
-#ifdef WIS_Z_ZERO_TO_ONE
+#ifdef MGM_Z_ZERO_TO_ONE
 	return makef4x4_f4(
 		makef4(1.0f / (aspect * a), 0.0f, 0.0f, 0.0f),
 		makef4(0.0f, 1.0f / a, 0.0f, 0.0f),
@@ -1117,6 +1123,10 @@ MGM_INLINE float4x4 operator*(float4x4 a, float    b) { return mulf4x4s(a, b); }
 #endif
 
 
+#if  defined(_MSVC)
+#  pragma warning(pop)
+#elif defined(__clang__)
+#  pragma clang diagnostic pop
+#endif
 
-#pragma warning(pop)
 #endif //INCLUDED_MGM_H
