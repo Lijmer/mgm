@@ -35,7 +35,7 @@
 //Both left handed and right handed matrices are supported. All matrix math is
 // done in a column major fashion.
 
-//It has only been compiled with Visual Studio 2015's C and C++ compilers, and clang
+//It has only been compiled with Visual Studio 2015's C and C++ compilers
 //It has also been designed with fast compilation in mind, since a short 
 // iteration time is key to productivity. That's why there are no templates :)
 
@@ -63,24 +63,13 @@
 #  define MGM_INLINE static inline
 #endif
 
-
-#if defined(__clang__) && defined(__cplusplus)
-	#include <algorithm>
-	using std::min;
-	using std::max;
-#else
-#  ifndef min
+#ifndef min
 #  define min(a, b) ((a) < (b) ? (a) : (b))
-#  endif
-
-#  ifndef max
-#  define max(a, b) ((a) > (b) ? (a) : (b))
-#  endif
-
 #endif
 
-
-#define MGM_PI 3.14159265358f
+#ifndef max
+#  define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 #define MGM_SHUF2(x, y) (((x) & 0x1) | (((y) & 0x1) << 1))
 #define MGM_SHUF3(x, y, z) (((x) & 0x3)       |                                \
@@ -470,10 +459,6 @@ MGM_INLINE float3 cross(float3 a, float3 b)
 		a.z * b.x - a.x * b.z,
 		a.x * b.y - a.y * b.x);
 }
-MGM_INLINE float crossf2(float2 a, float2 b)
-{
-	return a.x * b.y - a.y * b.x;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 //Addition
@@ -557,11 +542,10 @@ MGM_INLINE float4 mul(float4 a, float  b) { return mulf4s(a, b); }
 MGM_INLINE quatf mulqf(quatf a, quatf b)
 {
 	return makeqf(
+		a.w * b.w - a.x * b.x + a.y * b.y - a.z * b.z,
 		a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
 		a.w * b.y + a.y * b.w + a.z * b.x - a.x * b.z,
-		a.w * b.z + a.z * b.w + a.x * b.y - a.y * b.x,
-		a.w * b.w - a.x * b.x + a.y * b.y - a.z * b.z
-		);
+		a.w * b.z + a.z * b.w + a.x * b.y - a.y * b.x);
 }
 MGM_INLINE float3 mulqf_f3(quatf q, float3 v)
 {
@@ -570,13 +554,6 @@ MGM_INLINE float3 mulqf_f3(quatf q, float3 v)
 	const float3 uuv = cross(qv, uv);
 	return addf3(v, mulf3s(addf3(mulf3s(uv, q.r), uuv), 2));
 }
-#ifdef __cplusplus
-MGM_INLINE quatf mul(quatf a, quatf b) { return mulqf(a, b); }
-MGM_INLINE float3 mul(quatf a, float3 b) { return mulqf_f3(a, b); }
-MGM_INLINE quatf operator*(quatf a, quatf b) { return mulqf(a, b); }
-MGM_INLINE float3 operator*(quatf a, float3 b) { return mulqf_f3(a, b); }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 //Division
