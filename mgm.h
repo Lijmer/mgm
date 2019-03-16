@@ -47,7 +47,39 @@
 #ifndef INCLUDED_MGM_H
 #define INCLUDED_MGM_H
 
-#include <math.h>
+
+
+#ifdef MGM_NO_C_STDLIB //allow the user to not use the c standard library
+#  include <immintrin.h>
+
+MGM_INLINE float mgm_sqrtf(float x)
+{
+#  ifdef MGM_USE_SSE2
+    //use the SSE2 intrinsic for calculating the square root
+    const __m128 m = _mm_sqrt_ps(_mm_set_ps1(x));
+    return _mm_cvtss_f32(m);
+#  else
+
+#  endif
+}
+MGM_INLINE float mgm_sinf(float x)
+{
+  //TODO
+}
+MGM_INLINE float mgm_cosf(float x)
+{
+  //TODO
+}
+#  define MGM_SQRTF mgm_sqrtf
+#  define MGM_SINF  mgm_sinf
+#  define MGM_COSF  mgm_cosf
+#else
+#  include <math.h> //sqrtf, cosf, sinf
+#  define MGM_SQRTF sqrtf
+#  define MGM_SINF  sinf
+#  define MGM_COSF  cosf
+#endif
+
 
 #if defined(_MSVC)
 #  pragma warning(push)
@@ -70,18 +102,19 @@
 	using std::max;
 #else
 #  ifndef min
-#  define min(a, b) ((a) < (b) ? (a) : (b))
+#    define min(a, b) ((a) < (b) ? (a) : (b))
 #  endif
 
 #  ifndef max
-#  define max(a, b) ((a) > (b) ? (a) : (b))
+#    define max(a, b) ((a) > (b) ? (a) : (b))
 #  endif
 
 #endif
 
 
-#define MGM_PI 3.14159265358f
+#define MGM_PI 3.14159265358f //pi
 
+//For generating masks for the shuffle functions
 #define MGM_SHUF2(x, y) (((x) & 0x1) | (((y) & 0x1) << 1))
 #define MGM_SHUF3(x, y, z) (((x) & 0x3)       |                                \
                            (((y) & 0x3) << 2) |                                \
@@ -269,12 +302,12 @@ MGM_INLINE quatf makeqf_f4(float4 f4)
 MGM_INLINE quatf makeqf_axang(float3 axis, float angle)
 {
 	float half_angle = angle * 0.5f;
-	float sin_half_angle = sinf(half_angle);
+	float sin_half_angle = MGM_SINF(half_angle);
 	return makeqf(
 		axis.x * sin_half_angle,
 		axis.y * sin_half_angle,
 		axis.z * sin_half_angle,
-		cosf(half_angle));
+		MGM_COSF(half_angle));
 }
 #ifdef __cplusplus
 MGM_INLINE quatf makeqf(float4 f4) { return makeqf_f4(f4); }
@@ -341,7 +374,7 @@ MGM_INLINE float4x4 makef4x4(float4 x, float4 y, float4 z, float4 w)
 ////////////////////////////////////////////////////////////////////////////////
 //Saturate
 ////////////////////////////////////////////////////////////////////////////////
-MGM_INLINE float saturatef(float x) { return max(min(x, 1.0f), 0.0f); }
+MGM_INLINE float saturatef(float x) { return MGM_MAX(MGM_MIN(x, 1.0f), 0.0f); }
 MGM_INLINE float2 saturatef2(float2 f2)
 { return makef2(saturatef(f2.x), saturatef(f2.y)); }
 MGM_INLINE float3 saturatef3(float3 f3)
@@ -364,8 +397,10 @@ MGM_INLINE float4 saturate(float4 x) { return saturatef4(x); }
 ////////////////////////////////////////////////////////////////////////////////
 //Clamp
 ////////////////////////////////////////////////////////////////////////////////
+MGM_INLINE int clampi(int x, int minv, int maxv)
+{ return MGM_MAX(MGM_MIN(x, maxv), minv); }
 MGM_INLINE float clampf(float x, float minv, float maxv)
-{ return max(min(x, maxv), minv); }
+{ return MGM_MAX(MGM_MIN(x, maxv), minv); }
 MGM_INLINE float2 clampf2(float2 f2, float2 minv, float2 maxv)
 { return makef2(clampf(f2.x, minv.x, maxv.x), clampf(f2.y, minv.y, maxv.y)); }
 MGM_INLINE float3 clampf3(float3 f3, float3 minv, float3 maxv)
@@ -384,6 +419,8 @@ MGM_INLINE float4 clampf4(float4 f4, float4 minv, float4 maxv)
 		clampf(f4.w, minv.w, maxv.w));
 }
 #ifdef __cplusplus
+MGM_INLINE int clamp(int x, int minv, int maxv)
+{ return clampi(x, maxv, minv); }
 MGM_INLINE float  clamp(float  x, float  minv, float  maxv)
 { return clampf(x, minv, maxv); }
 MGM_INLINE float2 clamp(float2 x, float2 minv, float2 maxv)
@@ -398,11 +435,17 @@ MGM_INLINE float4 clamp(float4 x, float4 minv, float4 maxv)
 //Min
 ////////////////////////////////////////////////////////////////////////////////
 MGM_INLINE float2 minf2(float2 a, float2 b)
-{ return makef2(min(a.x, b.x), min(a.y, b.y)); }
+{ return makef2(MGM_MIN(a.x, b.x), MGM_MIN(a.y, b.y)); }
 MGM_INLINE float3 minf3(float3 a, float3 b)
-{ return makef3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)); }
+{ return makef3(MGM_MIN(a.x, b.x), MGM_MIN(a.y, b.y), MGM_MIN(a.z, b.z)); }
 MGM_INLINE float4 minf4(float4 a, float4 b)
-{ return makef4(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z), min(a.w, b.w)); }
+{
+  return makef4(
+    MGM_MIN(a.x, b.x),
+    MGM_MIN(a.y, b.y),
+    MGM_MIN(a.z, b.z),
+    MGM_MIN(a.w, b.w));
+}
 #ifdef __cplusplus
 MGM_INLINE float2 minf(float2 a, float2 b) { return minf2(a, b); }
 MGM_INLINE float3 minf(float3 a, float3 b) { return minf3(a, b); }
@@ -413,11 +456,17 @@ MGM_INLINE float4 minf(float4 a, float4 b) { return minf4(a, b); }
 //Max
 ////////////////////////////////////////////////////////////////////////////////
 MGM_INLINE float2 maxf2(float2 a, float2 b)
-{ return makef2(max(a.x, b.x), max(a.y, b.y)); }
+{ return makef2(MGM_MAX(a.x, b.x), MGM_MAX(a.y, b.y)); }
 MGM_INLINE float3 maxf3(float3 a, float3 b)
-{ return makef3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)); }
+{ return makef3(MGM_MAX(a.x, b.x), MGM_MAX(a.y, b.y), MGM_MAX(a.z, b.z)); }
 MGM_INLINE float4 maxf4(float4 a, float4 b)
-{ return makef4(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w)); }
+{
+  return makef4(
+    MGM_MAX(a.x, b.x),
+    MGM_MAX(a.y, b.y),
+    MGM_MAX(a.z, b.z),
+    MGM_MAX(a.w, b.w));
+}
 #ifdef __cplusplus
 MGM_INLINE float2 maxf(float2 a, float2 b) { return maxf2(a, b); }
 MGM_INLINE float3 maxf(float3 a, float3 b) { return maxf3(a, b); }
@@ -463,16 +512,16 @@ MGM_INLINE float4 shufflef4(float4 f4, int shuffle)
 ////////////////////////////////////////////////////////////////////////////////
 //Cross product
 ////////////////////////////////////////////////////////////////////////////////
+MGM_INLINE float crossf2(float2 a, float2 b)
+{
+  return a.x * b.y - a.y * b.x;
+}
 MGM_INLINE float3 cross(float3 a, float3 b)
 {
 	return makef3(
 		a.y * b.z - a.z * b.y,
 		a.z * b.x - a.x * b.z,
 		a.x * b.y - a.y * b.x);
-}
-MGM_INLINE float crossf2(float2 a, float2 b)
-{
-	return a.x * b.y - a.y * b.x;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,11 +606,10 @@ MGM_INLINE float4 mul(float4 a, float  b) { return mulf4s(a, b); }
 MGM_INLINE quatf mulqf(quatf a, quatf b)
 {
 	return makeqf(
+		a.w * b.w - a.x * b.x + a.y * b.y - a.z * b.z,
 		a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
 		a.w * b.y + a.y * b.w + a.z * b.x - a.x * b.z,
-		a.w * b.z + a.z * b.w + a.x * b.y - a.y * b.x,
-		a.w * b.w - a.x * b.x + a.y * b.y - a.z * b.z
-		);
+		a.w * b.z + a.z * b.w + a.x * b.y - a.y * b.x);
 }
 MGM_INLINE float3 mulqf_f3(quatf q, float3 v)
 {
@@ -646,9 +694,9 @@ MGM_INLINE float dot(float4 a, float4 b) { return dotf4(a, b); };
 ////////////////////////////////////////////////////////////////////////////////
 //Length
 ////////////////////////////////////////////////////////////////////////////////
-MGM_INLINE float lengthf2(float2 a) { return sqrtf(dotf2(a, a)); }
-MGM_INLINE float lengthf3(float3 a) { return sqrtf(dotf3(a, a)); }
-MGM_INLINE float lengthf4(float4 a) { return sqrtf(dotf4(a, a)); }
+MGM_INLINE float lengthf2(float2 a) { return MGM_SQRTF(dotf2(a, a)); }
+MGM_INLINE float lengthf3(float3 a) { return MGM_SQRTF(dotf3(a, a)); }
+MGM_INLINE float lengthf4(float4 a) { return MGM_SQRTF(dotf4(a, a)); }
 #ifdef __cplusplus
 MGM_INLINE float length(float2 a) { return lengthf2(a); };
 MGM_INLINE float length(float3 a) { return lengthf3(a); };
@@ -774,18 +822,20 @@ MGM_INLINE float4 mul(float4x4 m, float4 v) { return mulf4x4_f4(m, v); }
 MGM_INLINE float2x2 mulf2x2(float2x2 a, float2x2 b)
 {
 	return makef2x2_f2(
-		addf2(mulf2s(a.col[0], b.v[0][0]), mulf2s(a.col[1], b.v[0][1])),
-		addf2(mulf2s(a.col[0], b.v[1][0]), mulf2s(a.col[1], b.v[1][1])));
+		addf2(addf2(mulf2s(a.col[0], b.v[0][0]), mulf2s(a.col[1], b.v[0][1])),
+					addf2(mulf2s(a.col[2], b.v[0][2]), mulf2s(a.col[3], b.v[0][3]))),
+		addf2(addf2(mulf2s(a.col[0], b.v[1][0]), mulf2s(a.col[1], b.v[1][1])),
+					addf2(mulf2s(a.col[2], b.v[1][2]), mulf2s(a.col[3], b.v[1][3]))));
 }
 MGM_INLINE float3x3 mulf3x3(float3x3 a, float3x3 b)
 {
 	return makef3x3_f3(
 		addf3(addf3(mulf3s(a.col[0], b.v[0][0]), mulf3s(a.col[1], b.v[0][1])),
-					mulf3s(a.col[2], b.v[0][2])),
+					addf3(mulf3s(a.col[2], b.v[0][2]), mulf3s(a.col[3], b.v[0][3]))),
 		addf3(addf3(mulf3s(a.col[0], b.v[1][0]), mulf3s(a.col[1], b.v[1][1])),
-					mulf3s(a.col[2], b.v[1][2])),
+					addf3(mulf3s(a.col[2], b.v[1][2]), mulf3s(a.col[3], b.v[1][3]))),
 		addf3(addf3(mulf3s(a.col[0], b.v[2][0]), mulf3s(a.col[1], b.v[2][1])),
-					mulf3s(a.col[2], b.v[2][2])));
+					addf3(mulf3s(a.col[2], b.v[2][2]), mulf3s(a.col[3], b.v[2][3]))));
 }
 MGM_INLINE float4x4 mulf4x4(float4x4 a, float4x4 b)
 {
@@ -830,8 +880,60 @@ MGM_INLINE float4x4 mul(float4x4 a, float4x4 b) { return mulf4x4(a, b); }
 ////////////////////////////////////////////////////////////////////////////////
 //Projection matrix
 ////////////////////////////////////////////////////////////////////////////////
-MGM_INLINE float4x4 orthoLHf4x4() { /* TODO */ return makef4x4_identity(); };
-MGM_INLINE float4x4 orthoRHf4x4() { /* TODO */ return makef4x4_identity(); };
+MGM_INLINE float4x4 orthoLHf4x4(
+  float left, float right,
+  float bottom, float top,
+  float near_, float far_) //Windows.h defines near and far to nothing
+{
+#ifdef MGM_Z_ZERO_TO_ONE
+  return makef4x4_f4(
+    makef4(2.0f / (right - left), 0.0f, 0.0f, 0.0f),
+    makef4(0.0f, 2.0f / (top - bottom), 0.0f, 0.0f),
+    makef4(0.0f, 0.0f, 1.0f / (far_ - near_), 0.0f),
+    makef4(
+      -(right + left) / (right - left),
+      -(top + bottom) / (top - bottom),
+      -near_ / (far_ - near_),
+      1.0f));
+#else
+  return makef4x4_f4(
+    makef4(2.0f / (right - left), 0.0f, 0.0f, 0.0f),
+    makef4(0.0f, 2.0f / (top - bottom), 0.0f, 0.0f),
+    makef4(0.0f, 0.0f, 2.0f / (far_ - near_), 0.0f),
+    makef4(
+      -(right + left) / (right - left),
+      -(top + bottom) / (top - bottom),
+      -(far_ + near_) / (far_ - near_),
+      1.0f));
+#endif
+};
+MGM_INLINE float4x4 orthoRHf4x4(
+  float left, float right,
+  float bottom, float top,
+  float near_, float far_) //Windows.h defines near and far to nothing
+{
+#ifdef MGM_Z_ZERO_TO_ONE
+  return makef4x4_f4(
+    makef4(2.0f / (right - left), 0.0f, 0.0f, 0.0f),
+    makef4(0.0f, -2.0f / (top - bottom), 0.0f, 0.0f),
+    makef4(0.0f, 0.0f, 1.0f / (far_ - near_), 0.0f),
+    makef4(
+      -(right + left) / (right - left),
+      -(top + bottom) / (top - bottom),
+      -near_ / (far_ - near_),
+      1.0f));
+#else
+  return makef4x4_f4(
+    makef4(2.0f / (right - left), 0.0f, 0.0f, 0.0f),
+    makef4(0.0f, -2.0f / (top - bottom), 0.0f, 0.0f),
+    makef4(0.0f, 0.0f, 2.0f / (far_ - near_), 0.0f),
+    makef4(
+      -(right + left) / (right - left),
+      -(top + bottom) / (top - bottom),
+      -(far_ + near_) / (far_ - near_),
+      1.0f));
+#endif
+};
 MGM_INLINE float4x4 perspectiveRHf4x4(
 	float fov,
 	float aspect,
@@ -875,7 +977,13 @@ MGM_INLINE float4x4 perspectiveLHf4x4(
 #endif
 };
 
-
+MGM_INLINE float3x3 translatef3x3(float2 pos)
+{
+  return makef3x3_f3(
+    makef3(1, 0, 0),
+    makef3(0, 1, 0),
+    makef3_f2xy(pos, 1));
+}
 MGM_INLINE float4x4 translatef4x4(float3 pos)
 {
 	return makef4x4_f4(
@@ -883,6 +991,14 @@ MGM_INLINE float4x4 translatef4x4(float3 pos)
 		makef4(0, 1, 0, 0),
 		makef4(0, 0, 1, 0),
 		makef4_f3xyz(pos,  1.0f));
+}
+
+MGM_INLINE float3x3 scalef3x3(float3 scale)
+{
+  return makef3x3_f3(
+    makef3(scale.x, 0, 0),
+    makef3(0, scale.y, 0),
+    makef3(0, 0, scale.z));
 }
 MGM_INLINE float4x4 scalef4x4(float3 scale)
 {
@@ -894,8 +1010,8 @@ MGM_INLINE float4x4 scalef4x4(float3 scale)
 }
 MGM_INLINE float4x4 rotatexf4x4(float r)
 {
-	float c = cosf(r);
-	float s = sinf(r);
+	float c = MGM_COSF(r);
+	float s = MGM_SINF(r);
 	return makef4x4_f4(
 		makef4(1, 0, 0, 0),
 		makef4(0, c,-s, 0),
@@ -904,18 +1020,28 @@ MGM_INLINE float4x4 rotatexf4x4(float r)
 }
 MGM_INLINE float4x4 rotateyf4x4(float r)
 {
-	float c = cosf(r);
-	float s = sinf(r);
+	float c = MGM_COSF(r);
+	float s = MGM_SINF(r);
 	return makef4x4_f4(
 		makef4( c, 0, s, 0),
 		makef4( 0, 1, 0, 0),
 		makef4(-s, 0, c, 0),
 		makef4( 0, 0, 0, 1));
 }
+
+MGM_INLINE float3x3 rotatezf3x3(float r)
+{
+  float c = MGM_COSF(r);
+  float s = MGM_SINF(r);
+  return makef3x3_f3(
+    makef3(c, -s, 0),
+    makef3(s, c, 0),
+    makef3(0, 0, 1));
+}
 MGM_INLINE float4x4 rotatezf4x4(float r)
 {
-	float c = cosf(r);
-	float s = sinf(r);
+	float c = MGM_COSF(r);
+	float s = MGM_SINF(r);
 	return makef4x4_f4(
 		makef4(c,-s, 0, 0),
 		makef4(s, c, 0, 0),
@@ -924,6 +1050,66 @@ MGM_INLINE float4x4 rotatezf4x4(float r)
 }
 
 
+MGM_INLINE float4x4 rotateXY_f4x4(float r)
+{
+  float c = MGM_COSF(r);
+  float s = MGM_SINF(r);
+  return makef4x4_f4(
+    makef4( c, -s,  0,  0),
+    makef4( s,  c,  0,  0),
+    makef4( 0,  0,  1,  0),
+    makef4( 0,  0,  0,  1));
+}
+MGM_INLINE float4x4 rotateXZ_f4x4(float r)
+{
+  float c = MGM_COSF(r);
+  float s = MGM_SINF(r);
+  return makef4x4_f4(
+    makef4( c,  0,  s,  0),
+    makef4( 0,  1,  0,  0),
+    makef4(-s,  0,  c,  0),
+    makef4( 0,  0,  0,  1));
+}
+MGM_INLINE float4x4 rotateYZ_f4x4(float r)
+{
+  float c = MGM_COSF(r);
+  float s = MGM_SINF(r);
+  return makef4x4_f4(
+    makef4( 1,  0,  0,  0),
+    makef4( 0,  c, -s,  0),
+    makef4( 0,  s,  c,  0),
+    makef4( 0,  0,  0,  1));
+}
+MGM_INLINE float4x4 rotateXW_f4x4(float r)
+{
+  float c = MGM_COSF(r);
+  float s = MGM_SINF(r);
+  return makef4x4_f4(
+    makef4( c,  0,  0,  s),
+    makef4( 0,  1,  0,  0),
+    makef4( 0,  0,  1,  0),
+    makef4(-s,  0,  0,  c));
+}
+MGM_INLINE float4x4 rotateYW_f4x4(float r)
+{
+  float c = MGM_COSF(r);
+  float s = MGM_SINF(r);
+  return makef4x4_f4(
+    makef4( 1,  0,  0,  0),
+    makef4( 0,  c,  0, -s),
+    makef4( 0,  0,  1,  0),
+    makef4( 0,  s,  0,  c));
+}
+MGM_INLINE float4x4 rotateZW_f4x4(float r)
+{
+  float c = MGM_COSF(r);
+  float s = MGM_SINF(r);
+  return makef4x4_f4(
+    makef4( 1,  0,  0,  0),
+    makef4( 0,  1,  0,  0),
+    makef4( 0,  0,  c, -s),
+    makef4( 0,  0,  s,  c));
+}
 
 
 
